@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 import os
+import snowflake.connector
 
 def load_custom_env(username):
     env_file = f".env.{username}"
@@ -9,14 +10,22 @@ def load_custom_env(username):
         raise FileNotFoundError(f"Environment file {env_file} not found.")
     
 load_custom_env('rocha')
-
-class MySQLoaders:
+class SnowflakeLoader:
     def __init__(self):
-        self.host = os.getenv('HOST')
-        self.user = os.getenv('USER')
-        self.password = os.getenv('PASSWORD')
-        self.database = os.getenv('DATABASE')
-
-        # Conexión a MySQL
-        self.conn = pymysql.connect(host=self.host,user=self.user,password=self.password,database=self.database)
+        self.conn = snowflake.connector.connect(
+            user=os.getenv('USER'),
+            password=os.getenv('PASSWORD'),
+            account=os.getenv('HOST'),
+            warehouse=os.getenv('WAREHOUSE'),
+            database=os.getenv('DATABASE'),
+            schema=os.getenv('SCHEMA')
+        )
         self.cursor = self.conn.cursor()
+
+    def execute_query(self, query):
+        self.cursor.execute(query)
+        return self.cursor.fetchall()
+
+    def close_connection(self):
+        self.cursor.close()
+        self.conn.close()
