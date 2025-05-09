@@ -80,13 +80,15 @@ class Snowflake:
                 $3 AS Artist_Name, 
                 TRY_CAST($4 AS INT) AS Periods_on_Chart, 
                 TRY_CAST($5 AS INT) AS Views, 
-                TRY_CAST(REPLACE($6, '%', '') AS FLOAT) AS Growth
+                TRY_CAST(REPLACE($6, '%', '') AS FLOAT) AS Growth,
+                $7 AS Week, 
+                $8 AS Month
                 FROM @{stage}/{file_name} (FILE_FORMAT => 'PROJECT.CSV_FORMAT')
                 """
 
                 # Execute the query to read data from the file
                 self.cursor.execute(query)
-                data = pd.DataFrame(self.cursor.fetchall(), columns=["Rank", "Previous_Rank", "Artist_Name", "Periods_on_Chart", "Views", "Growth"])
+                data = pd.DataFrame(self.cursor.fetchall(), columns=["Rank", "Previous_Rank", "Artist_Name", "Periods_on_Chart", "Views", "Growth", "Week", "Month"])
 
                 print(f"{len(data)} records read from {file_name}")
 
