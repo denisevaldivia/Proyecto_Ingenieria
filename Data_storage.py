@@ -9,8 +9,12 @@ from snowflake.connector.pandas_tools import write_pandas
 # Función para elegir el env
 def load_custom_env(username):
     env_file = f".env.{username}"
+
+    # Si el archivo existe, lo carga
     if os.path.exists(env_file):
         load_dotenv(env_file)
+    
+    # Si no, imprime un error
     else:
         raise FileNotFoundError(f"Environment file {env_file} not found.")
 
@@ -41,13 +45,18 @@ class Snowflake:
 
     def put_csv_folder_to_stage(self, folder_path, stage_path):
         """Sube archivos CSV desde una carpeta local al stage en Snowflake."""
+
+        # Buscar todos los CSV en la carpeta indicada
         try:
             csv_files = glob.glob(os.path.join(folder_path, "*.csv"))
             if not csv_files:
                 print(f"No se encontraron archivos CSV en {folder_path}")
                 return
-
+            
+            # Por cada CSV encontrado
             for local_file_path in csv_files:
+
+                # Comando PUT para subirlo al stage de Snowflake
                 put_command = f"PUT file://{local_file_path} @{stage_path} OVERWRITE = TRUE"
                 self.cursor.execute(put_command)
                 print(f"Archivo {os.path.basename(local_file_path)} subido a stage {stage_path}")
@@ -58,7 +67,7 @@ class Snowflake:
     def extract_files_from_stage(self, stage):
         """Extract CSV files from the stage and read them into memory (no local save)."""
         try:
-            # List the files in the stage
+            # # Listar los archivos en el stage
             list_command = f"LIST @{stage}"
             self.cursor.execute(list_command)
             files = self.cursor.fetchall()
@@ -67,13 +76,15 @@ class Snowflake:
                 print("No files found in the stage.")
                 return []
 
-            # Read each CSV file into memory and combine them into a single DataFrame
             combined_data = pd.DataFrame()
+
+            # Por cada archivo encontrado
             for file in files:
                 file_name = os.path.basename(file[0])
                 print(f"File found in stage: {file_name}")
 
-                # Query to read the CSV file with the proper FILE_FORMAT
+                # Consulta para leer el contenido del CSV
+                # Hay nulos por lo que se usa el Try_cast
                 query = f"""
                 SELECT TRY_CAST($1 AS INT) AS Rank, 
                 TRY_CAST($2 AS INT) AS Previous_Rank, 
@@ -86,24 +97,26 @@ class Snowflake:
                 FROM @{stage}/{file_name} (FILE_FORMAT => 'PROJECT.CSV_FORMAT')
                 """
 
-                # Execute the query to read data from the file
+                #  # Ejecuta la consulta para leer los datos
                 self.cursor.execute(query)
                 data = pd.DataFrame(self.cursor.fetchall(), columns=["Rank", "Previous_Rank", "Artist_Name", "Periods_on_Chart", "Views", "Growth", "Week", "Month"])
 
                 print(f"{len(data)} records read from {file_name}")
 
-                # Check if the file has any records
+                # Verificar si los datos contienen records
                 if data.empty:
                     print(f"No data found in {file_name}. Skipping file.")
                     continue
 
+                # Combina los datos leídos con el DataFrame acumulado
                 combined_data = pd.concat([combined_data, data], ignore_index=True)
 
-            # Check if any data was successfully combined
+            # Verificar si los datos se pudieron combinar
             if combined_data.empty:
                 print("No valid data extracted from the files.")
                 return []
 
+            # Mensaje indicador del proceso
             print(f"Files combined in memory with {len(combined_data)} records.")
             return combined_data
 
@@ -117,7 +130,7 @@ class Snowflake:
             # Construir query dinámica de creación
             columns = []
             for col in dataframe.columns:
-                # Determinar tipo de dato
+                # Detecta el tipo de dato de cada columna
                 dtype = dataframe[col].dtype
                 if pd.api.types.is_integer_dtype(dtype):
                     col_type = "NUMBER"
@@ -128,6 +141,7 @@ class Snowflake:
 
                 columns.append(f'"{col}" {col_type}')
 
+            # Arma el query de creación de la tabla RECORDS
             columns_sql = ", ".join(columns)
 
             create_query = f"""
