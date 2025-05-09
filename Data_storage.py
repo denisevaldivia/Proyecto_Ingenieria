@@ -3,6 +3,8 @@ from dotenv import load_dotenv
 import snowflake.connector
 import glob
 import csv
+import pandas as pd
+from snowflake.connector.pandas_tools import write_pandas
 
 # Función para elegir el env
 def load_custom_env(username):
@@ -16,7 +18,7 @@ def load_custom_env(username):
 load_custom_env('diana')
 
 
-class SnowflakeLoaders:
+class Snowflake:
     def __init__(self):
         self.account = os.getenv('account')
         self.user = os.getenv('user')
@@ -24,6 +26,7 @@ class SnowflakeLoaders:
         self.warehouse = os.getenv('warehouse')
         self.database = os.getenv('database')
         self.schema = os.getenv('schema')
+        self.stage = os.getenv('stage')  # El stage en Snowflake
 
         # Conexión a Snowflake
         self.conn = snowflake.connector.connect(
@@ -37,6 +40,7 @@ class SnowflakeLoaders:
         self.cursor = self.conn.cursor()
 
     def put_csv_folder_to_stage(self, folder_path, stage_path):
+        """Sube archivos CSV desde una carpeta local al stage en Snowflake."""
         try:
             csv_files = glob.glob(os.path.join(folder_path, "*.csv"))
             if not csv_files:
@@ -51,23 +55,123 @@ class SnowflakeLoaders:
         except Exception as e:
             print(f"Error subiendo archivos desde {folder_path}: {e}")
 
+    def extract_files_from_stage(self, stage):
+        """Extract CSV files from the stage and read them into memory (no local save)."""
+        try:
+            # List the files in the stage
+            list_command = f"LIST @{stage}"
+            self.cursor.execute(list_command)
+            files = self.cursor.fetchall()
+
+            if not files:
+                print("No files found in the stage.")
+                return []
+
+            # Read each CSV file into memory and combine them into a single DataFrame
+            combined_data = pd.DataFrame()
+            for file in files:
+                file_name = os.path.basename(file[0])
+                print(f"File found in stage: {file_name}")
+
+                # Query to read the CSV file with the proper FILE_FORMAT
+                query = f"""
+                SELECT TRY_CAST($1 AS INT) AS Rank, 
+                TRY_CAST($2 AS INT) AS Previous_Rank, 
+                $3 AS Artist_Name, 
+                TRY_CAST($4 AS INT) AS Periods_on_Chart, 
+                TRY_CAST($5 AS INT) AS Views, 
+                TRY_CAST(REPLACE($6, '%', '') AS FLOAT) AS Growth
+                FROM @{stage}/{file_name} (FILE_FORMAT => 'PROJECT.CSV_FORMAT')
+                """
+
+                # Execute the query to read data from the file
+                self.cursor.execute(query)
+                data = pd.DataFrame(self.cursor.fetchall(), columns=["Rank", "Previous_Rank", "Artist_Name", "Periods_on_Chart", "Views", "Growth"])
+
+                print(f"{len(data)} records read from {file_name}")
+
+                # Check if the file has any records
+                if data.empty:
+                    print(f"No data found in {file_name}. Skipping file.")
+                    continue
+
+                combined_data = pd.concat([combined_data, data], ignore_index=True)
+
+            # Check if any data was successfully combined
+            if combined_data.empty:
+                print("No valid data extracted from the files.")
+                return []
+
+            print(f"Files combined in memory with {len(combined_data)} records.")
+            return combined_data
+
+        except Exception as e:
+            print(f"Error extracting and combining files: {e}")
+            return None
+    
+    def create_table_if_not_exists(self, table_name, dataframe):
+        """Crea la tabla en Snowflake si no existe, según las columnas del DataFrame"""
+        try:
+            # Construir query dinámica de creación
+            columns = []
+            for col in dataframe.columns:
+                # Determinar tipo de dato
+                dtype = dataframe[col].dtype
+                if pd.api.types.is_integer_dtype(dtype):
+                    col_type = "NUMBER"
+                elif pd.api.types.is_float_dtype(dtype):
+                    col_type = "FLOAT"
+                else:
+                    col_type = "VARCHAR"
+
+                columns.append(f'"{col}" {col_type}')
+
+            columns_sql = ", ".join(columns)
+
+            create_query = f"""
+            CREATE TABLE IF NOT EXISTS {table_name} (
+                {columns_sql}
+            )
+            """
+            self.cursor.execute(create_query)
+            print(f"Tabla {table_name} verificada/creada correctamente.")
+
+        except Exception as e:
+            print(f"Error creando tabla {table_name}: {e}")
+
+    def load_data_to_snowflake(self, combined_data):
+        """Carga los datos combinados directamente en la tabla RECORDS en Snowflake."""
+        try:
+            # Crear tabla si no existe
+            self.create_table_if_not_exists('RECORDS', combined_data)
+
+            # Ahora cargar los datos
+            success, nchunks, nrows, _ = write_pandas(self.conn, combined_data, 'RECORDS')
+            print(f"Se cargaron {nrows} registros en la tabla RECORDS")
+
+        except Exception as e:
+            print(f"Error cargando datos a Snowflake: {e}")
+
     def close_connection(self):
+        """Cerrar conexión"""
         self.cursor.close()
         self.conn.close()
         print('Conexión a Snowflake cerrada')
 
 
-# Ejecutar ETL
-etl = SnowflakeLoaders()
+# Instanciar la clase Snowflake
+etl = Snowflake()
 
-# Carpeta local con los CSV
+# Subir archivos locales al stage
 local_folder_path = 'datos_csv'
-
-# Stage destino
 stage_path = 'PROJECT_DATALAKE'
-
-# Subir todos los CSV de la carpeta al stage
 etl.put_csv_folder_to_stage(local_folder_path, stage_path)
 
-# Cerrar conexión después
+# Extraer y combinar archivos directamente desde el stage (en memoria)
+combined_data = etl.extract_files_from_stage(stage_path)
+
+# cargar los datos combinados en la tabla RECORDS [y crearla]
+etl.load_data_to_snowflake(combined_data)
+
+# Cerrar conexión al final
 etl.close_connection()
