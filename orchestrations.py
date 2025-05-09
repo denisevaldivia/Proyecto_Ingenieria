@@ -1,4 +1,4 @@
-from etl_functions import load_custom_env, Snowflake
+from Data_storage import load_custom_env, Snowflake
 
 # Cargar env
 load_custom_env('diana')
