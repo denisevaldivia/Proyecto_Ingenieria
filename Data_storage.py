@@ -18,10 +18,6 @@ def load_custom_env(username):
     else:
         raise FileNotFoundError(f"Environment file {env_file} not found.")
 
-# Elegir el env
-load_custom_env('diana')
-
-
 class Snowflake:
     def __init__(self):
         self.account = os.getenv('account')
