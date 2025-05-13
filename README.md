@@ -1,6 +1,6 @@
 # Proyecto_Ingenieria
 
-Este proyecto es un ETL que analiza los datos semanales de YouTube Charts a través de Snowflake y PowerBI. Se utiliza Snowflake para almacenar y transformar los datos, mientras que se analizan en PowerBI .
+Este proyecto es un ETL que analiza los datos semanales de YouTube Charts a través de Snowflake y PowerBI. Se utiliza Snowflake para almacenar y transformar los datos, mientras que se analizan en PowerBI.
 
 ## Requerimientos
 
@@ -8,7 +8,26 @@ Las librerías necesarias para correr el código se encuentran en el archivo de 
 
 ## Uso de Credenciales
 
-Es necesario tener una cuenta en Snowflake para correr el ETL. Las credenciales de inicio de sesión deben de almacenarse en un archhivo _.env_
+Es necesario tener una cuenta en Snowflake para correr el ETL. Las credenciales de inicio de sesión deben de almacenarse en un archivo _.env_. Este código permite que múltiples usuarios tengan acceso al ETL, por lo que se pueden almacenar varias credenciales a la vez. Entonces, si el usuario que desea acceder al ETL se llama "moy", su archivo debe de nombrarse de la siguiente manera: _.env.moy_.
+
+Este archivo env debe de contener los siguientes datos:
+
+> user='YOUR_USERNAME'
+> password='YOUR_PASSWORD'
+> account='YOUR_ACCOUNT_URL'
+> warehouse='COMPUTE_WH'
+> database='PID_DATAWAREHOUSE'
+> schema='PROJECT'
+
+## Set-up en Snowflake
+
+Para que el cargado y transformación de datos a Snowflake sea correcto, se necesita:
+
+1. Crear una Base de Datos en Snowflake con el nombre **_PID_DATAWAREHOUSE_**, 
+2. Crear un schema dentro de la Base de Datos llamado **_PROJECT_**, y
+3. Crear una stage llamada **_PROJECT_DATALAKE_**
+
+## Ejecución
 
 Para inicializar el ETL, es necesario descargar los datos semanales a la carpeta "datos_csv". Ahora mismo, están los datos semanales de todo el año 2024.
 
