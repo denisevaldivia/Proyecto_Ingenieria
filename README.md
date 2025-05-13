@@ -13,10 +13,15 @@ Es necesario tener una cuenta en Snowflake para correr el ETL. Las credenciales 
 Este archivo env debe de contener los siguientes datos:
 
 > user='YOUR_USERNAME'
+>
 > password='YOUR_PASSWORD'
+>
 > account='YOUR_ACCOUNT_URL'
+>
 > warehouse='COMPUTE_WH'
+>
 > database='PID_DATAWAREHOUSE'
+>
 > schema='PROJECT'
 
 ## Set-up en Snowflake
