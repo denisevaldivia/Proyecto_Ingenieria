@@ -1,7 +1,7 @@
 from data_storage import load_custom_env, Snowflake
 
 # Cargar env
-load_custom_env('diana')
+load_custom_env('viv')
 
 # Instanciar la clase
 etl = Snowflake()

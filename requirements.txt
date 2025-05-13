@@ -1,0 +1,6 @@
+os
+dotenv
+snowflake.connector
+glob
+csv
+pandas
