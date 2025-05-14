@@ -50,7 +50,7 @@ Además, se necesita correr el siguiente código de SQL en Snowflake:
 
 ## Ejecución
 
-Para inicializar el ETL, es necesario descargar los datos semanales a la carpeta "datos_csv". Ahora mismo, la carpeta cuenta con  los datos semanales de todo el año 2024.
+Para inicializar el ETL, es necesario ingresar los datos deseados a la carpeta "datos_csv". Ahora mismo, la carpeta cuenta con  los datos semanales de todo el año 2024 de YouTube Charts. En caso de querer analizar otros años, es necesario descargar los datos semanales y guardarlos en la carpeta "datos_csv". 
 
 Posteriormente, es necesario correr el archivo **_orchestrations.py_**. En este, se debe especificar el nombre del usuario que va a acceder a Snowflake a través de la función **_load_custom_env_**. El nombre de usuario es el especificado en el archivo **_.env_**. Siguiendo el ejemplo anterior, el usuario debería de insertar: **_load_custom_env('moy')_**.
 
