@@ -56,4 +56,4 @@ Posteriormente, es necesario correr el archivo **_orchestrations.py_**. En este,
 
 Esto activará el ETL y comenzará a mostrar mensajes de su avance. En caso de que algo impida la ejecución correcta, se le mostrará un mensaje de error indicándole la parte del ETL que falló.
 
-Para visualizar el dashboard en PowerBI, es necesario descargar el archvivo **_YouTube Charts.pbix _** y realizar la conexión con Snowflake para cargar los datos, ingresando las credenciales que se encuentran en el archivo **_.env_**.
+Para visualizar el dashboard en PowerBI, es necesario descargar el archvivo **_YouTube Charts.pbix_** y realizar la conexión con Snowflake para cargar los datos, ingresando las credenciales que se encuentran en el archivo **_.env_**.
